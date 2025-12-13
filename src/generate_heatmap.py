@@ -152,17 +152,16 @@ def main():
     import matplotlib.pyplot as plt
     import numpy as np
 
-    # Set font - try multiple fallbacks for Chinese support
-    # Windows: Microsoft JhengHei, Linux: WenQuanYi Micro Hei, Mac: Arial Unicode MS
-    plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial Unicode MS', 'sans-serif']
-    plt.rcParams['axes.unicode_minus'] = False # Fix minus sign
+    # Set font - Prioritize Microsoft JhengHei for Windows to avoid Arial missing glyphs
+    plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial', 'sans-serif']
+    plt.rcParams['axes.unicode_minus'] = False 
 
     # Custom Colors
     # 0: Gray, 1-4: Browns
     COLORS = ['#ebedf0', '#f4d6b6', '#d9a773', '#bf7e44', '#8c5931']
     def get_color(value):
         if value == 0: return COLORS[0]
-        if value < 60: return COLORS[1]  # Thresholds can be adjusted
+        if value < 60: return COLORS[1]
         if value < 180: return COLORS[2]
         if value < 360: return COLORS[3]
         return COLORS[4]
@@ -212,9 +211,10 @@ def main():
         rect = mpatches.FancyBboxPatch(
             (x_pos + GAP, y_pos + GAP),
             BOX_SIZE, BOX_SIZE,
-            boxstyle="round,pad=0.02,rounding_size=0.2", # Rounding
+            boxstyle="round,pad=-0.005,rounding_size=0.1", # Adjusted roundness
             facecolor=color,
-            edgecolor=None
+            edgecolor=None,
+            linewidth=0 # Remove border
         )
         ax.add_patch(rect)
 
