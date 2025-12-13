@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import pandas as pd
-import calplot
+
 import matplotlib.pyplot as plt
 from notion_client import Client
 from dotenv import load_dotenv
