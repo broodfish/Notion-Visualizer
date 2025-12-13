@@ -241,7 +241,8 @@ def main():
     pass
 
     output_path = output_dir / "heatmap.png"
-    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.2, transparent=True)
+    # Increase DPI for better resolution on mobile/Retina screens
+    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.2, transparent=True, dpi=300)
     print(f"Heatmap saved to {output_path}")
 
     # Generate HTML with cache-busting timestamp
