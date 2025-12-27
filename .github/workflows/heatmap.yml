@@ -29,8 +29,8 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATASOURCE_ID: ${{ secrets.NOTION_DATASOURCE_ID }}
           # Set property names to match Notion database schema
-          NOTION_DATE_PROP: '名稱'
-          NOTION_DURATION_PROP: '統計時長'
+          NOTION_DATE_PROP: ${{ secrets.NOTION_DATE_PROP }}
+          NOTION_DURATION_PROP: ${{ secrets.NOTION_DURATION_PROP }}
         run: python src/generate_heatmap.py
       
       - name: ⏫ Commit and Push new Heatmap
