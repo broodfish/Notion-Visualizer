@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import pandas as pd
@@ -34,6 +34,15 @@ def main():
         print("Error: NOTION_TOKEN or NOTION_DATASOURCE_ID not properly set in environment variables.")
         sys.exit(1)
 
+    # Date Window Calculation
+    # Go back 52 weeks (approx 1 year) and align to the start of the week (Monday)
+    TODAY = datetime.now().date()
+    one_year_ago = TODAY - timedelta(weeks=52)
+    start_date = one_year_ago - timedelta(days=one_year_ago.weekday())
+    end_date = TODAY
+    
+    print(f"Querying Window: {start_date} to {end_date}")
+
     # 2. Fetch Data from Notion
     notion = Client(auth=NOTION_TOKEN)
     records = []
@@ -46,10 +55,18 @@ def main():
     while has_more:
         try:
             # Query the Data Source
+            # Filter by Created Time (since '日期' is a created_time property)
+            filter_params = {
+                "timestamp": "created_time",
+                "created_time": {
+                    "on_or_after": start_date.isoformat()
+                }
+            }
             response = notion.data_sources.query(
                 data_source_id=NOTION_DATASOURCE_ID,
                 start_cursor=start_cursor,
-                page_size=100
+                page_size=100,
+                filter=filter_params
             )
         except Exception as e:
             print(f"Error querying Notion: {e}")
@@ -58,32 +75,45 @@ def main():
         results = response.get("results", [])
         if results and len(records) == 0:
              # DEBUG: Print the first page's properties to help debug
-             # first_page_props = results[0].get("properties", {})
-             # print("\n--- DEBUG: Properties Keys found in first page ---")
-             # print(list(first_page_props.keys()))
-             # print(f"\n--- DEBUG: Content of property '{DATE_PROP}' ---")
-             # print(first_page_props.get(DATE_PROP))
-             # print(f"\n--- DEBUG: Content of property '{DURATION_PROP}' ---")
-             # print(first_page_props.get(DURATION_PROP))
-             # print("------------------------------------------------\n")
+             first_page_props = results[0].get("properties", {})
+             print("\n--- DEBUG: Properties Keys found in first page ---")
+             print(list(first_page_props.keys()))
+             print(f"\n--- DEBUG: Content of property '{DATE_PROP}' ---")
+             import json
+             print(json.dumps(first_page_props.get(DATE_PROP), indent=2, default=str))
+             print(f"\n--- DEBUG: Content of property '{DURATION_PROP}' ---")
+             print(json.dumps(first_page_props.get(DURATION_PROP), indent=2, default=str))
+             print("------------------------------------------------\n")
              pass
 
         for page in results:
             props = page.get("properties", {})
             
-            # Extract Date from Title Property (Title -> Mention -> Date)
-            # User specified: DATE_PROP.title[0].mention.date.start
+            # Extract Date
             try:
-                # Note: DATE_PROP name might default to "Date", but user schema implies it's the Title property?
-                # Usually Title property is named "Name" or "Title", but we use DATE_PROP variable.
-                # If DATE_PROP is "Name", this works.
                 date_prop = props.get(DATE_PROP, {})
-                title_list = date_prop.get("title", [])
-                if not title_list:
+                date_str = None
+                
+                # Case A: Standard Date Property
+                if date_prop.get("type") == "date":
+                     date_obj = date_prop.get("date")
+                     if date_obj:
+                         date_str = date_obj.get("start")
+                
+                # Case B: Created Time Property
+                if not date_str and date_prop.get("type") == "created_time":
+                    date_str = date_prop.get("created_time")
+
+                # Case C: Title/RichText Property with Mention (Fallback)
+                if not date_str:
+                    content_list = date_prop.get("title", []) or date_prop.get("rich_text", [])
+                    if content_list:
+                        mention = content_list[0].get("mention", {})
+                        if mention:
+                             date_str = mention.get("date", {}).get("start")
+                
+                if not date_str:
                     continue
-                    
-                date_data = title_list[0].get("mention", {}).get("date", {})
-                date_str = date_data.get("start")
             except (IndexError, AttributeError):
                 continue
             
@@ -111,7 +141,30 @@ def main():
 
     # 3. Process Data
     df = pd.DataFrame(records)
-    df['date'] = pd.to_datetime(df['date'])
+    
+    # Handle Timezones and Time components:
+    # Notion returns created_time in UTC (e.g., 2025-12-03T05:53:00.000Z)
+    # We must convert to User's Timezone (Asia/Taipei ~ UTC+8) to match their "Today".
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    
+    # Ensure UTC-aware (Notion usually provides 'Z' suffix, but be safe)
+    # If naive, assume UTC.
+    if df['date'].dt.tz is None:
+         # However, if some rows valid and some not...
+         # Let's apply to all.
+         pass # pd.to_datetime usually handles 'Z' correctly.
+    
+    # Convert to Asia/Taipei
+    # note: requires zoneinfo or pytz, but ZoneInfo is standard in 3.9+
+    # We imported ZoneInfo at top? No, let's just use fixed offset if ZoneInfo missing or simple approach.
+    # Simple fixed offset UTC+8 for robustness
+    df['date'] = df['date'].dt.tz_convert(ZoneInfo("Asia/Taipei"))
+    
+    # Strip time (normalize to midnight local time)
+    df['date'] = df['date'].dt.normalize()
+    # Remove timezone info to match the plain date index we generate
+    df['date'] = df['date'].dt.tz_localize(None)
+    
     df.set_index('date', inplace=True)
     
     # Aggregate by day (summing duration if multiple entries exist per day)
@@ -124,13 +177,7 @@ def main():
     
     print("Generating heatmap (Custom Styling)...")
     
-    # Configuration
-    YEAR = datetime.now().year
-    TODAY = datetime.now().date()
-    
-    # Generate full date range for the current year up to today
-    start_date = datetime(YEAR, 1, 1).date()
-    end_date = TODAY
+    pass # Date calculation moved to top
     
     # Create complete index
     idx = pd.date_range(start_date, end_date)
@@ -204,6 +251,10 @@ def main():
         # We want Mon at Top. So Mon: y=6, Sun: y=0
         y_pos = 6 - day_idx
         x_pos = week_idx
+        
+        # DEBUG: Print coordinate for Today (last item) or specifically interesting dates
+        if date_val == end_date or date_val == start_date:
+            print(f"DEBUG Plot: Date={date_val}, Week={week_idx}, Day={day_idx} (0=Mon), X={x_pos}, Y={y_pos}")
         
         color = get_color(value)
         
