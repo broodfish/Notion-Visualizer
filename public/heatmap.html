@@ -1,41 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reading Heatmap</title>
     <style>
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             background: transparent;
         }
+
         .container {
             width: 100%;
             height: 100%;
-            overflow-x: auto; /* Allow horizontal scrolling */
+            overflow-x: auto;
+            /* Allow horizontal scrolling */
             overflow-y: hidden;
             display: flex;
-            align-items: center; /* Vertically center */
+            align-items: center;
+            /* Vertically center */
             /* Firefox */
             scrollbar-width: none;
             /* IE & Edge */
             -ms-overflow-style: none;
         }
+
         .container::-webkit-scrollbar {
             /* Chrome, Safari, Opera */
             display: none;
         }
+
         img {
             /* Fill vertical height of the container (Notion block) */
-            height: 90%; 
-            width: auto; /* Maintain aspect ratio */
-            max-width: none; /* Allow it to overflow horizontally */
+            height: 90%;
+            width: auto;
+            /* Maintain aspect ratio */
+            max-width: none;
+            /* Allow it to overflow horizontally */
             display: block;
             margin: 0 auto;
         }
+
         /* Mobile optimization: make it bigger to be readable */
         @media (max-width: 480px) {
             img {
@@ -44,6 +54,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container" id="scrollContainer">
         <img src="heatmap.png?t=1767244344" alt="Reading Heatmap">
@@ -51,10 +62,11 @@
 
     <script>
         // Auto-scroll to the farthest right (Today)
-        window.onload = function() {
+        window.onload = function () {
             const container = document.getElementById('scrollContainer');
             container.scrollLeft = container.scrollWidth;
         };
     </script>
 </body>
+
 </html>
