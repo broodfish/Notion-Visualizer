@@ -1,0 +1,38 @@
+name: Generate Word Cloud
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: ☁️ Run Word Cloud Generation Script
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_YEAR_DATASOURCE_ID: ${{ secrets.NOTION_YEAR_DATASOURCE_ID }}
+          TAGS_PROP: ${{ secrets.TAGS_PROP }}
+        run: python src/generate_wordcloud.py
+
+      - name: ⏫ Commit and Push new Word Cloud
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "☁️ Update reading word cloud via GitHub Actions"
+          file_pattern: "public/word_cloud.*"

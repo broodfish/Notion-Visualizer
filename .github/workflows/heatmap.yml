@@ -2,7 +2,7 @@ name: Generate Daily Heatmap
 
 on:
   schedule:
-    - cron: '0 * * * *' # Hourly
+    - cron: "0 * * * *" # Hourly
   workflow_dispatch:
 
 jobs:
@@ -14,12 +14,12 @@ jobs:
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
-      
+
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: "3.10"
+          cache: "pip"
 
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
@@ -32,9 +32,9 @@ jobs:
           NOTION_DATE_PROP: ${{ secrets.NOTION_DATE_PROP }}
           NOTION_DURATION_PROP: ${{ secrets.NOTION_DURATION_PROP }}
         run: python src/generate_heatmap.py
-      
+
       - name: ⏫ Commit and Push new Heatmap
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: '🎨 Update reading heatmap via GitHub Actions'
-          file_pattern: 'public/*.png public/*.html'
+          commit_message: "🎨 Update reading heatmap via GitHub Actions"
+          file_pattern: "public/*.png public/*.html"
