@@ -6,7 +6,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from notion_client import Client
 from wordcloud import WordCloud
+from wordcloud import WordCloud
 import matplotlib.font_manager as fm
+import re
 
 def get_chinese_font_path():
     """Attempt to find a suitable Chinese font on the system."""
@@ -44,6 +46,20 @@ def main():
     NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
     NOTION_DATASOURCE_ID = os.environ.get("NOTION_YEAR_DATASOURCE_ID")
     TAGS_PROP = os.environ.get("TAGS_PROP", "Tags") # Default to "Tags" if not set
+    YEAR_PROP = os.environ.get("YEAR_PROP", "Year") # Default to "Year" if not set
+    TARGET_YEAR = os.environ.get("TARGET_YEAR")
+    USE_EXPLICIT_YEAR_FILENAME = False
+
+    if not TARGET_YEAR:
+        TARGET_YEAR = datetime.now().year
+        print(f"No TARGET_YEAR provided, defaulting to current year: {TARGET_YEAR}")
+    else:
+        USE_EXPLICIT_YEAR_FILENAME = True
+        try:
+            TARGET_YEAR = int(TARGET_YEAR)
+        except ValueError:
+            print(f"Error: TARGET_YEAR '{TARGET_YEAR}' is not a valid number.")
+            sys.exit(1)
 
     if not NOTION_TOKEN or not NOTION_DATASOURCE_ID:
         print("Error: NOTION_TOKEN or NOTION_YEAR_DATASOURCE_ID not set.")
@@ -56,6 +72,8 @@ def main():
     print(f"Configuration:")
     print(f"  Datasource ID: {NOTION_DATASOURCE_ID}")
     print(f"  Tags Property: {TAGS_PROP}")
+    print(f"  Year Property: {YEAR_PROP}")
+    print(f"  Target Year:   {TARGET_YEAR}")
 
     # Initialize Notion Client
     notion = Client(auth=NOTION_TOKEN)
@@ -81,6 +99,73 @@ def main():
         
         for page in results:
             props = page.get("properties", {})
+            
+            # --- Year Filtering ---
+            # Default: Assume we skip unless we confirm the year matches
+            include_page = False
+            
+            year_prop = props.get(YEAR_PROP)
+            if year_prop:
+                ty = year_prop.get("type")
+                page_year = 0
+                if ty == "number":
+                    page_year = year_prop.get("number")
+                elif ty == "select":
+                    sel = year_prop.get("select")
+                    if sel:
+                        try:
+                             # Extract digits only
+                             match = re.search(r'\d+', sel.get("name"))
+                             if match:
+                                 page_year = int(match.group())
+                        except:
+                            pass
+                elif ty == "formula":
+                    form = year_prop.get("formula")
+                    if form.get("type") == "number":
+                        page_year = form.get("number")
+                    elif form.get("type") == "string":
+                        try:
+                             match = re.search(r'\d+', form.get("string"))
+                             if match:
+                                 page_year = int(match.group())
+                        except:
+                            pass
+                elif ty == "title":
+                    # Year might be the title
+                    title_list = year_prop.get("title", [])
+                    if title_list:
+                         plain = "".join([t.get("plain_text", "") for t in title_list])
+                         try:
+                             match = re.search(r'\d+', plain)
+                             if match:
+                                 page_year = int(match.group())
+                         except:
+                             pass
+                elif ty == "rich_text":
+                     rt_list = year_prop.get("rich_text", [])
+                     if rt_list:
+                         plain = "".join([t.get("plain_text", "") for t in rt_list])
+                         try:
+                             match = re.search(r'\d+', plain)
+                             if match:
+                                 page_year = int(match.group())
+                         except:
+                             pass
+                
+                # Debug print (limited to first 20 to avoid spam if many)
+                # if len(results) < 20: 
+                #     print(f"DEBUG: Page Year: {page_year}, Target: {TARGET_YEAR}, PropType: {ty}") 
+                #     if page_year == 0:
+                #         print(f"DEBUG: RAW PROP: {year_prop}")
+
+                if page_year == TARGET_YEAR:
+                    include_page = True
+            
+            if not include_page:
+                continue
+            # ----------------------
+
             tag_prop = props.get(TAGS_PROP)
             
             if not tag_prop:
@@ -177,7 +262,13 @@ def main():
     wc.generate_from_frequencies(text_freq)
     
     # Save Image
-    output_img_path = output_dir / "word_cloud.png"
+    # Save Image
+    if USE_EXPLICIT_YEAR_FILENAME:
+        output_filename = f"word_cloud_{TARGET_YEAR}.png"
+    else:
+        output_filename = "word_cloud.png"
+        
+    output_img_path = output_dir / output_filename
     wc.to_file(str(output_img_path))
     print(f"Saved word cloud image to {output_img_path}")
     
@@ -209,12 +300,16 @@ def main():
     </style>
 </head>
 <body>
-    <img src="word_cloud.png?t={timestamp}" alt="Word Cloud">
+    <img src="{output_filename}?t={timestamp}" alt="Word Cloud">
 </body>
 </html>
     """
     
-    output_html_path = output_dir / "word_cloud.html"
+    if USE_EXPLICIT_YEAR_FILENAME:
+        output_html_path = output_dir / f"word_cloud_{TARGET_YEAR}.html"
+    else:
+        output_html_path = output_dir / "word_cloud.html"
+        
     with open(output_html_path, "w", encoding="utf-8") as f:
         f.write(html_content.strip())
         
