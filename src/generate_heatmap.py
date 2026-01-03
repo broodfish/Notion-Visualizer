@@ -279,6 +279,9 @@ def main():
 
     # Add Month Labels (Top)
     # Place label at the first week of each month
+    # Fix: Use a dictionary to store labels by week index to prevent overlaps (e.g., Dec vs Jan in same week)
+    week_label_map = {}
+    
     current_month = -1
     for date_val in daily_data.index:
         date_obj = date_val.date() if isinstance(date_val, datetime) else date_val
@@ -286,9 +289,16 @@ def main():
             # New month found
             current_month = date_obj.month
             week_idx = get_week_num(date_obj)
-            # Label position: x=week, y=7.5 (above Mon)
-            ax.text(week_idx, 7.5, str(current_month), 
-                    ha='left', va='center', fontsize=10, color='#666')
+            # Store/Overwrite label for this week column
+            # This ensures that if Dec and Jan fall in the same week column, 
+            # the later one (Jan) will be the final label shown.
+            week_label_map[week_idx] = str(current_month)
+
+    # Draw the labels
+    for week_idx, label_text in week_label_map.items():
+        # Label position: x=week, y=7.5 (above Mon)
+        ax.text(week_idx, 7.5, label_text, 
+                ha='left', va='center', fontsize=10, color='#666')
 
     # Add Day Labels (Left) - REMOVED per user request (font issues in CI)
     pass
