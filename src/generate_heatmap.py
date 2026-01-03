@@ -158,12 +158,16 @@ def main():
     # note: requires zoneinfo or pytz, but ZoneInfo is standard in 3.9+
     # We imported ZoneInfo at top? No, let's just use fixed offset if ZoneInfo missing or simple approach.
     # Simple fixed offset UTC+8 for robustness
-    df['date'] = df['date'].dt.tz_convert(ZoneInfo("Asia/Taipei"))
+    # Convert to Asia/Taipei if aware
+    if df['date'].dt.tz is not None:
+        df['date'] = df['date'].dt.tz_convert(ZoneInfo("Asia/Taipei"))
     
     # Strip time (normalize to midnight local time)
     df['date'] = df['date'].dt.normalize()
+
     # Remove timezone info to match the plain date index we generate
-    df['date'] = df['date'].dt.tz_localize(None)
+    if df['date'].dt.tz is not None:
+        df['date'] = df['date'].dt.tz_localize(None)
     
     df.set_index('date', inplace=True)
     
