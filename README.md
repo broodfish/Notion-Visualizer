@@ -1,44 +1,63 @@
-# Notion Reading Heatmap Generator
+# Notion Visualizer
 
-Generates a GitHub-contribution-style heatmap of your reading habits from a Notion database and saves it as an image.
+Generate beautiful visualisations of your habits from a Notion database.
 
-Example like this:
-![image](https://raw.githubusercontent.com/broodfish/Daily-Heatmap/refs/heads/main/public/heatmap.png)
+1.  **Heatmap**: A GitHub-contribution-style heatmap of your daily duration.
+2.  **Yearly Word Cloud**: A word cloud of your tags, filtered by year.
+
+## Output Examples
+
+### Heatmap
+![Heatmap](public/heatmap.png)
+
+### Word Cloud (2025)
+![Word Cloud](public/word_cloud_2025.png)
 
 ## Setup
 
-1.  **Notion Setup**:
+### 1. Notion Integrations
+1.  Create a Notion Integration at [https://www.notion.so/my-integrations](https://www.notion.so/my-integrations).
+2.  Get the `Internal Integration Secret` (Token).
+3.  **Share** your Database(s) with this integration (Three dots > Connect to > Select your integration).
+4.  Get the `Datasource ID` (Database ID) from your database URL.
 
-    - Create a Notion Integration at [https://www.notion.so/my-integrations](https://www.notion.so/my-integrations).
-    - Get the `Internal Integration Secret` (Token).
-    - Share your Database with this integration (Three dots > Connect to > Select your integration).
-    - Get the `Datasource ID` from your database.
+### 2. Environment Variables (.env)
+Create a `.env` file or set these secrets in your GitHub repository:
 
-2.  **Database Structure**:
+| Variable | Description | Required For |
+| :--- | :--- | :--- |
+| `NOTION_TOKEN` | Your Notion Integration Secret. | Both |
+| `NOTION_DATASOURCE_ID` | Database ID for the Heatmap data. | Heatmap |
+| `NOTION_DATE_PROP` | Property name for Date (e.g., "Date"). | Heatmap |
+| `NOTION_DURATION_PROP` | Property name for Duration (Number/Rollup, e.g., "Time"). | Heatmap |
+| `NOTION_YEAR_DATASOURCE_ID`| Database ID for the Word Cloud data. | Word Cloud |
+| `TAGS_PROP` | Property name for Tags (Select/Multi-select/Formula, e.g., "Tags"). | Word Cloud |
+| `YEAR_PROP` | Property name for Year (Number/Select/Title/Formula, e.g., "Year"). | Word Cloud |
+| `TARGET_YEAR` | (Optional) Specific year to filter for (e.g., "2026"). Defaults to current year. | Word Cloud |
 
-    - Ensure your database has:
-      - A **Date** property.
-      - A **Rollup** property for duration.
+## Usage
 
-3.  **GitHub Secrets**:
-    - Add the following secrets to your repository:
-      - `NOTION_TOKEN`: Your integration secret.
-      - `NOTION_DATASOURCE_ID`: Your database ID.
-      - `NOTION_DATE_PROP`: Your date column name.
-      - `NOTION_DURATION_PROP`: Your duration column name.
-      - `NOTION_YEAR_DATASOURCE_ID`: Your yearly reading database ID (for word cloud).
-      - `TAGS_PROP`: Your tags column name (for word cloud).
+### Local Development
 
-## Local Development
+1.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```bash
-pip install -r requirements.txt
-# Set environment variables in your terminal or .env
-python3 src/generate_heatmap.py
-python3 src/generate_wordcloud.py
-```
+2.  **Generate Heatmap**:
+    ```bash
+    python src/generate_heatmap.py
+    ```
+    -   Generates: `public/heatmap.png`, `public/heatmap.html`
 
-## Output
+3.  **Generate Word Cloud**:
+    ```bash
+    # Optionally set target year
+    # export TARGET_YEAR=2025  
+    python src/generate_wordcloud.py
+    ```
+    -   **If `TARGET_YEAR` is set** (e.g., 2025): Generates `public/word_cloud_2025.png`.
+    -   **If `TARGET_YEAR` is unset**: Generates `public/word_cloud.png` (using current year data).
 
-The script generates `public/heatmap.png` and `public/heatmap.html`.
-Also `public/word_cloud.png` and `public/word_cloud.html`.
+## Credits
+Start from [broodfish/Notion-Visualizer](https://github.com/broodfish/Notion-Visualizer).
