@@ -212,9 +212,9 @@ def main():
     COLORS = ['#ebedf0', '#D9BAAB', '#C69781', '#B37557', '#A0522D']
     def get_color(value):
         if value == 0: return COLORS[0]
-        if value < 60: return COLORS[1]
-        if value < 180: return COLORS[2]
-        if value < 360: return COLORS[3]
+        if value < 120: return COLORS[1]
+        if value < 240: return COLORS[2]
+        if value < 480: return COLORS[3]
         return COLORS[4]
 
     # Calculate dimensions
