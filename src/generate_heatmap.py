@@ -209,7 +209,7 @@ def main():
 
     # Custom Colors
     # 0: Gray, 1-4: Browns
-    COLORS = ['#ebedf0', '#D9BAAB', '#C69781', '#B37557', '#A0522D']
+    COLORS = ['#ECE4E1', '#D9BAAB', '#C69781', '#B37557', '#A0522D']
     def get_color(value):
         if value == 0: return COLORS[0]
         if value < 120: return COLORS[1]
@@ -275,7 +275,7 @@ def main():
 
     # Set Aspect and Limits
     # Tighten limits since we removed left-side day labels
-    ax.set_xlim(-0.5, total_weeks + 0.5)
+    ax.set_xlim(-0.1, total_weeks + 0.1)
     # y=0 is bottom, y=7.5 is top (for month labels)
     ax.set_ylim(-0.5, 8)
     ax.set_aspect('equal')
@@ -287,6 +287,7 @@ def main():
     week_label_map = {}
     
     current_month = -1
+    MONTH_LABELS = ['Mon', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     for date_val in daily_data.index:
         date_obj = date_val.date() if isinstance(date_val, datetime) else date_val
         if date_obj.month != current_month:
@@ -296,12 +297,12 @@ def main():
             # Store/Overwrite label for this week column
             # This ensures that if Dec and Jan fall in the same week column, 
             # the later one (Jan) will be the final label shown.
-            week_label_map[week_idx] = str(current_month)
+            week_label_map[week_idx] = MONTH_LABELS[current_month - 1]
 
     # Draw the labels
     for week_idx, label_text in week_label_map.items():
         # Label position: x=week, y=7.5 (above Mon)
-        ax.text(week_idx, 7.5, label_text, 
+        ax.text(week_idx + 0.1, 7.25, label_text, 
                 ha='left', va='center', fontsize=10, color='#666')
 
     # Add Day Labels (Left) - REMOVED per user request (font issues in CI)
