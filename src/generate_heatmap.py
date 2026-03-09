@@ -303,7 +303,7 @@ def main():
     for week_idx, label_text in week_label_map.items():
         # Label position: x=week, y=7.5 (above Mon)
         ax.text(week_idx + 0.1, 7.25, label_text, 
-                ha='left', va='center', fontsize=10, color='#666')
+                ha='left', va='center', fontsize=10, color='#C69781')
 
     # Add Day Labels (Left) - REMOVED per user request (font issues in CI)
     pass
