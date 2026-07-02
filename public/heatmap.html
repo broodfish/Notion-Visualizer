@@ -1,60 +1,178 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reading Heatmap</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-        }
-        .container {
-            width: 100%;
-            height: 100%;
-            overflow-x: auto; /* Allow horizontal scrolling */
-            overflow-y: hidden;
-            display: flex;
-            align-items: center; /* Vertically center */
-            /* Firefox */
-            scrollbar-width: none;
-            /* IE & Edge */
-            -ms-overflow-style: none;
-        }
-        .container::-webkit-scrollbar {
-            /* Chrome, Safari, Opera */
-            display: none;
-        }
-        img {
-            /* Fill vertical height of the container (Notion block) */
-            height: 90%; 
-            width: auto; /* Maintain aspect ratio */
-            max-width: none; /* Allow it to overflow horizontally */
-            display: block;
-            margin: 0 auto;
-        }
-        /* Mobile optimization: make it bigger to be readable */
-        @media (max-width: 480px) {
-            img {
-                height: 80%;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Heatmap</title>
+<style>
+  :root {
+    --c0: #ECE4E1;
+    --c1: #D9BAAB;
+    --c2: #C69781;
+    --c3: #B37557;
+    --c4: #A0522D;
+    --label: #C69781;
+    --tooltip-bg: #3D2B22;
+    --tooltip-fg: #F5EDE8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --c0: #33302E;
+      --label: #A07860;
+      --tooltip-bg: #F5EDE8;
+      --tooltip-fg: #3D2B22;
+    }
+  }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+  .container {
+    width: 100%; height: 100%;
+    overflow-x: auto; overflow-y: hidden;
+    display: flex; align-items: center;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .container::-webkit-scrollbar { display: none; }
+  svg { display: block; margin: 0 auto; height: 90%; width: auto; }
+
+  .cell { rx: 2px; transition: opacity .12s; }
+  .cell:hover { opacity: .75; }
+
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-fg);
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 5px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 10px));
+    transition: opacity .1s;
+    z-index: 10;
+  }
+  #tooltip.show { opacity: 1; }
+</style>
 </head>
 <body>
-    <div class="container" id="scrollContainer">
-        <img src="heatmap.png?t=1782956740" alt="Reading Heatmap">
-    </div>
+<div class="container" id="scrollContainer"></div>
+<div id="tooltip"></div>
 
-    <script>
-        // Auto-scroll to the farthest right (Today)
-        window.onload = function() {
-            const container = document.getElementById('scrollContainer');
-            container.scrollLeft = container.scrollWidth;
-        };
-    </script>
+<script>
+(async function () {
+  const CELL = 14, GAP = 3, STEP = CELL + GAP;
+  const TOP = 24;    // space for month labels
+  const LEFT = 0;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function color(v) {
+    if (v === 0)   return 'var(--c0)';
+    if (v < 120)   return 'var(--c1)';
+    if (v < 240)   return 'var(--c2)';
+    if (v < 480)   return 'var(--c3)';
+    return 'var(--c4)';
+  }
+
+  function fmtDuration(min) {
+    if (min <= 0) return '沒有閱讀紀錄';
+    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    if (h && m) return `閱讀 ${h} 小時 ${m} 分`;
+    if (h) return `閱讀 ${h} 小時`;
+    return `閱讀 ${m} 分鐘`;
+  }
+
+  function iso(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  let data = { days: {} };
+  try {
+    const res = await fetch('heatmap.json?t=' + Date.now());
+    if (res.ok) data = await res.json();
+  } catch (e) { /* render empty grid on failure */ }
+
+  // Window: today back 52 weeks, aligned to Monday (local time = Asia/Taipei for the reader)
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = new Date(today); start.setDate(start.getDate() - 52 * 7);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // back to Monday
+
+  const totalWeeks = Math.floor((today - start) / (7 * 864e5)) + 1;
+  const W = LEFT + totalWeeks * STEP;
+  const H = TOP + 7 * STEP;
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  function text(x, y, str, anchor) {
+    const t = document.createElementNS(svgNS, 'text');
+    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('fill', 'var(--label)');
+    t.setAttribute('font-size', '11');
+    if (anchor) t.setAttribute('text-anchor', anchor);
+    t.textContent = str;
+    svg.appendChild(t);
+    return t;
+  }
+
+  // Cells + month labels
+  const tooltip = document.getElementById('tooltip');
+  const monthByWeek = {}; // later month wins if two share a column
+  const d = new Date(start);
+  let prevMonth = -1;
+
+  while (d <= today) {
+    const week = Math.floor((d - start) / (7 * 864e5));
+    const row = (d.getDay() + 6) % 7; // Mon=0 … Sun=6
+    if (d.getMonth() !== prevMonth) {
+      prevMonth = d.getMonth();
+      monthByWeek[week] = MONTHS[prevMonth];
+    }
+
+    const key = iso(d);
+    const minutes = data.days[key] || 0;
+
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('class', 'cell');
+    rect.setAttribute('x', LEFT + week * STEP);
+    rect.setAttribute('y', TOP + row * STEP);
+    rect.setAttribute('width', CELL);
+    rect.setAttribute('height', CELL);
+    rect.setAttribute('fill', color(minutes));
+
+    const dateLabel = `${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+    rect.addEventListener('pointerenter', (e) => {
+      tooltip.textContent = `${dateLabel} · ${fmtDuration(minutes)}`;
+      tooltip.classList.add('show');
+    });
+    rect.addEventListener('pointermove', (e) => {
+      tooltip.style.left = e.clientX + 'px';
+      tooltip.style.top = e.clientY + 'px';
+    });
+    rect.addEventListener('pointerleave', () => tooltip.classList.remove('show'));
+
+    svg.appendChild(rect);
+    d.setDate(d.getDate() + 1);
+  }
+
+  for (const [week, label] of Object.entries(monthByWeek)) {
+    text(LEFT + week * STEP, TOP - 9, label);
+  }
+
+  const container = document.getElementById('scrollContainer');
+  container.appendChild(svg);
+  container.scrollLeft = container.scrollWidth; // jump to today
+})();
+</script>
 </body>
 </html>

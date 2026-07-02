@@ -24,17 +24,17 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🖼️ Run Heatmap Generation Script
+      - name: 📊 Run Heatmap Data Generation Script
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATASOURCE_ID: ${{ secrets.NOTION_DATASOURCE_ID }}
           # Set property names to match Notion database schema
           NOTION_DATE_PROP: ${{ secrets.NOTION_DATE_PROP }}
           NOTION_DURATION_PROP: ${{ secrets.NOTION_DURATION_PROP }}
-        run: python src/generate_heatmap.py
+        run: python src/generate_data.py
 
-      - name: ⏫ Commit and Push new Heatmap
+      - name: ⏫ Commit and Push new Heatmap Data
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "🎨 Update reading heatmap via GitHub Actions"
-          file_pattern: "public/*.png public/*.html"
+          commit_message: "📊 Update reading heatmap data via GitHub Actions"
+          file_pattern: "public/heatmap.json"
