@@ -26,6 +26,7 @@
   html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
+    height: 100dvh;
     background: transparent;
     font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
   }
@@ -37,7 +38,10 @@
     -ms-overflow-style: none;
   }
   .container::-webkit-scrollbar { display: none; }
-  svg { display: block; margin: 0 auto; height: 90%; width: auto; }
+  /* Always fill the available height, no matter the viewport width;
+     width scales with it (via viewBox aspect ratio) and overflows into
+     the horizontal scroller when narrow. */
+  svg { display: block; margin: 0 auto; height: 98%; width: auto; max-width: none; flex-shrink: 0; }
 
   .cell { rx: 2px; transition: opacity .12s; }
   .cell:hover { opacity: .75; }
@@ -156,7 +160,13 @@
       tooltip.classList.add('show');
     });
     rect.addEventListener('pointermove', (e) => {
-      tooltip.style.left = e.clientX + 'px';
+      const margin = 6;
+      const half = tooltip.offsetWidth / 2;
+      const x = Math.min(
+        Math.max(e.clientX, half + margin),
+        window.innerWidth - half - margin
+      );
+      tooltip.style.left = x + 'px';
       tooltip.style.top = e.clientY + 'px';
     });
     rect.addEventListener('pointerleave', () => tooltip.classList.remove('show'));
